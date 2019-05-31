@@ -1,6 +1,161 @@
 CHANGES for LIRE
 ================
 
+2016-02-27
+==========
+  - Added new feature COMO from Savvas Chatzichristofis and Nektarios Anagnostopoulos
+  - Added unit test for COMO
+
+2016-12-27
+==========
+  - Added two new methods to MetricSpaces
+
+2016-12-19
+==========
+  - Added getters to MetricSpaces
+  - Parallelized LuceneIndexWriter
+
+2016-12-16
+==========
+  - Fixed the distribution of references points in MetricSpaces.generateHashes().
+  - Updated SimpleApplication and added DocValues as example.
+  - Updated documentation on MetricSpaces indexing and search.
+  - Fixed naming problem in AbstractDocumentWriter
+
+2016-12-16
+==========
+  - Tweaked Extractor and MetricSpaces
+
+2016-12-15
+==========
+  - Finished extraction tool by providing and LuceneIndexWriter for it.
+  - Added CommandLineUtils for common tasks.
+
+2016-12-14
+==========
+  - Re-visited metric spaces indexing for QA
+  - Implemented DocValues based search for MetricSpacesImageSearcher
+  - Added TwelveMonkeys ImageIO libs to runtime in gradle.build, it's optional, but rather helpful
+  - Added an extraction to base64 tool
+
+2016-12-12
+==========
+  - Changed ACCID quantization (double -> short) and serialization (8 -> 2 bytes).
+
+2016-12-12
+==========
+  - Added ACCID feature to LIRE and LireDemo (Thanks go to Chrysa and Nektarios)
+  - Re-added some of the test cases in Gradle build file
+  - removed photos with unclear licenses and added 10 with (CC) for testing
+
+2016-12-07
+==========
+  - Fixed WorkItem to work with LireSolr
+  - Fixed hash problem (moved to resources folder)
+
+2016-12-07
+==========
+  - Switched to gradle for the main LIRE project.
+  - Updated everything to latest Lucene version.
+
+2016-11-25
+==========
+  - Updated documentation
+
+2016-11-24
+==========
+  - Made liredemo and simpleapplication gradle based.
+
+2016-01-28
+==========
+  - Mapped the number of key points for random selection from ParallelIndexer through to the end
+  - Added security for small images in SimpleExtractor
+
+2016-01-26
+==========
+  - Changed conversion of images to TYPE_3BYTE_BGR in ImageUtils.
+  - Fixed a bug with GenericFastImageSearcher using multiple fields.
+  - Added example for local feature based search.
+
+2016-01-25
+==========
+  - Bugfix in ParallelIndexer, adding Preprocessor for images in local sampling routine
+    (based on bug descrition of Myrtha Fuog)
+
+2015-11-06
+==========
+  - Invalid character in comments removed (based on pull request of Bart Van Bos)
+  - Adapted .gitignore from https://github.com/boeboe/LIRE/ fork
+  - Adapted pom.xml from https://github.com/boeboe/LIRE/ fork
+
+2015-09-23
+==========
+  - Fixed Extractor bug.
+
+2015-09-22
+==========
+  - Changed MetricSpaces query mode to term boosting to reduce size of query.
+  - Added statistics to docs.
+
+2015-09-09
+==========
+  - Added three distance functions to MetricsUtils
+
+2015-09-09
+==========
+  - API change and docs on metric indexing.
+
+2015-09-09
+==========
+  - DocValues implementation and tests for indexing and search.
+  - documentation on metric spaces and docvalues.
+  - Changed the RAM buffer size of IndexWriter instances in LuceneUtils to cope with lots of small files more easily.
+
+2015-09-07
+==========
+  - pom.xml patch by Lukas Knoch
+
+2015-09-04
+==========
+  - Documentation, error message updates.
+  - implemented and tested net.semanticmetadata.lire.searchers.MetricSpacesImageSearcher, on 100k images it
+    had similar performance to in-memory search w/o the startup delay.
+
+2015-08-26
+==========
+  - Indexing based on Metric Spaces mostly finished, with some tests still to be done.
+    see MetricSpacesTest for samples.
+  - Change in file handling in ParallelIndexer, now using MappedByteBuffer / NIO.
+  - Added support for hash method selection to GlobalDocumentBuilder and ParallelIndexer
+
+2015-08-20
+==========
+  - Converted ParallelExtractor to using LinkedBlockingQueue
+
+2015-08-20
+==========
+  - Speeded up extraction of PHOG by ~ 40%.
+
+2015-08-17
+==========
+  - Added a speed fix for Extraction of FCTH and CEDD based on a diff from from
+    Michael Riegler (https://www.simula.no/people/michael) &
+    Konstantin Pogorelov (https://www.simula.no/people/konstantinvpogorelov)
+
+2015-06-17
+==========
+  - Added custom DocumentBuilder for handling metadata to ParallelIndexer.
+  - Fixed LIRE demo.
+  - Worked on the developer docs.
+
+2015-06-16
+==========
+  - updated to Lucene 5.2.1, fixed simpleapplication to go with Lucene 5.2.1
+
+2015-06-10
+==========
+  - Lire 1.0 beta, extreme changelist, massive API changes, by Nektarios.
+
 2015-02-13
 ==========
   - Bug fix in LireDemo build file

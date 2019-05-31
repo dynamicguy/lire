@@ -1,5 +1,5 @@
 /*
- * This file is part of the LIRE project: http://www.semanticmetadata.net/lire
+ * This file is part of the LIRE project: http://lire-project.net
  * LIRE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -110,6 +110,40 @@ public class SerializationUtils {
                 (byte) ((data >> 0) & 0xff),
         };
     }
+    /**
+     * Converts an int to a byte array with 4 elements. Used to put ints into a byte[] payload in a convenient
+     * and fast way by shifting without using streams (which is kind of slow). <br/>
+     * Taken from http://www.daniweb.com/code/snippet216874.html
+     *
+     * @param data the int to convert
+     * @return the resulting byte[] array
+     * @see net.semanticmetadata.lire.utils.SerializationUtils#toInt(byte[])
+     */
+    public static byte[] toBytes(short data) {
+        return new byte[]{
+                (byte) ((data >> 8) & 0xff),
+                (byte) ((data >> 0) & 0xff),
+        };
+    }
+
+    public static short toShort(byte[] data) {
+        if (data == null || data.length != 2) return 0x0;
+        return (short) ( // NOTE: type cast not necessary for int
+                (0xff & data[0]) << 8 |
+                        (0xff & data[1]) << 0
+        );
+    }
+
+    public static short[] toShortArray(byte[] in, int offset, int length) {
+        short[] result = new short[(length >> 1)];
+        byte[] tmp = new byte[2];
+        for (int i = 0; i < length >> 1; i++) {
+            System.arraycopy(in, offset + (i * 2), tmp, 0, 2);
+            result[i] = toShort(tmp);
+        }
+        return result;
+    }
+
 
     /**
      * Converts a byte[] array with size 8 to a long. <br/>
@@ -147,6 +181,21 @@ public class SerializationUtils {
         for (int i = 0; i < data.length; i++) {
             tmp = toBytes(data[i]);
             System.arraycopy(tmp, 0, result, i * 4, 4);
+        }
+        return result;
+    }
+
+    /**
+     * Convenience method to transform an int[] array to a byte array for serialization.
+     *
+     * @param data the int[] to convert
+     * @return the resulting byte[] 4 times in size (4 bytes per int)
+     */
+    public static byte[] toByteArray(short[] data) {
+        byte[] tmp, result = new byte[data.length * 2];
+        for (int i = 0; i < data.length; i++) {
+            tmp = toBytes(data[i]);
+            System.arraycopy(tmp, 0, result, i * 2, 2);
         }
         return result;
     }
@@ -326,6 +375,28 @@ public class SerializationUtils {
     }
 
     /**
+     * Convenience method for creating a double array from an int array.
+     *
+     * @param data
+     * @return
+     */
+    public static double[] castToDoubleArray(int[] data) {
+        double[] result = new double[data.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = data[i];
+        }
+        return result;
+    }
+
+    public static double[] castToDoubleArray(short[] data) {
+        double[] result = new double[data.length];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = data[i];
+        }
+        return result;
+    }
+
+    /**
      * Convenience method for creating a double array from a byte array.
      *
      * @param data
@@ -446,6 +517,19 @@ public class SerializationUtils {
             sb.append(' ');
         }
         return sb.toString();
+    }
+
+    /**
+     * Create a hex string from an array of bytes.
+     * @param data
+     * @return
+     */
+    public static String toHex(byte[] data) {
+        StringBuilder sb = new StringBuilder(data.length << 2);
+        for (int i = 0; i < data.length; i++) {
+           sb.append(String.format("%02X ", data[i]));
+        }
+        return sb.toString().trim();
     }
 
     /**

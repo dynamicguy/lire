@@ -1,5 +1,5 @@
 /*
- * This file is part of the LIRE project: http://www.semanticmetadata.net/lire
+ * This file is part of the LIRE project: http://lire-project.net
  * LIRE is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -41,8 +41,14 @@
 
 package net.semanticmetadata.lire.utils;
 
-import net.semanticmetadata.lire.ImageSearchHits;
-import net.semanticmetadata.lire.imageanalysis.ColorLayout;
+import net.semanticmetadata.lire.builders.DocumentBuilder;
+import net.semanticmetadata.lire.imageanalysis.features.global.ColorLayout;
+import net.semanticmetadata.lire.searchers.ImageSearchHits;
+import org.apache.commons.io.IOCase;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.SuffixFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.TopDocs;
 
@@ -53,6 +59,7 @@ import java.io.*;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.zip.ZipEntry;
@@ -65,30 +72,34 @@ import java.util.zip.ZipOutputStream;
  *
  * @author Mathias Lux, mathias@juggle.at
  * @author sangupta, sandy.pec@gmail.com (closed streams in finally clause)
+ * @author Nektarios Anagnostopoulos, nek.anag@gmail.com
  */
 public class FileUtils {
-    enum FileTypes {JPG, GIF, TIF, PNG, PDF, UNKNOWN};
+    enum FileTypes {JPG, GIF, TIF, PNG, PDF, UNKNOWN}
+
+    ;
+
     /**
-     * Returns all jpg images from a directory in an array.
+     * basic image file filter.
+     */
+    public static final SuffixFileFilter fileFilter = new SuffixFileFilter(new String[]{".jpg", ".jpeg", ".png", ".gif"}, IOCase.INSENSITIVE);
+
+    /**
+     * Returns all images from a directory in an array. Image files are identified by their suffix being from {.png, .jpg, .jpeg, .gif} in case insensitive manner.
      *
      * @param directory                 the directory to start with
      * @param descendIntoSubDirectories should we include sub directories?
-     * @return an ArrayList<String> containing all the files or nul if none are found..
+     * @return an ArrayList<String> containing all the files or null if none are found..
      * @throws IOException
      */
     public static ArrayList<String> getAllImages(File directory, boolean descendIntoSubDirectories) throws IOException {
         ArrayList<String> resultList = new ArrayList<String>(256);
-        File[] f = directory.listFiles();
-        for (File file : f) {
-            if (file != null && (file.getName().toLowerCase().endsWith(".jpg") || file.getName().toLowerCase().endsWith(".png") || file.getName().toLowerCase().endsWith(".gif")) && !file.getName().startsWith("tn_")) {
-                resultList.add(file.getCanonicalPath());
-            }
-            if (descendIntoSubDirectories && file.isDirectory()) {
-                ArrayList<String> tmp = getAllImages(file, true);
-                if (tmp != null) {
-                    resultList.addAll(tmp);
-                }
-            }
+        IOFileFilter includeSubdirectories = TrueFileFilter.INSTANCE;
+        if (!descendIntoSubDirectories) includeSubdirectories = null;
+        Iterator<File> fileIterator = org.apache.commons.io.FileUtils.iterateFiles(directory, fileFilter, includeSubdirectories);
+        while (fileIterator.hasNext()) {
+            File next = fileIterator.next();
+            resultList.add(next.getCanonicalPath());
         }
         if (resultList.size() > 0)
             return resultList;
@@ -148,7 +159,7 @@ public class FileUtils {
 //    }
 
     /**
-     * Returns all jpg & png images from a directory in an array.
+     * Returns all images from a directory in an array of File. Image files are identified by their suffix being from {.png, .jpg, .jpeg, .gif}.
      *
      * @param directory                 the directory to start with
      * @param descendIntoSubDirectories should we include sub directories?
@@ -157,18 +168,11 @@ public class FileUtils {
      */
     public static ArrayList<File> getAllImageFiles(File directory, boolean descendIntoSubDirectories) throws IOException {
         ArrayList<File> resultList = new ArrayList<File>(256);
-        File[] f = directory.listFiles();
-        for (File file : f) {
-            if (file != null && (file.getName().toLowerCase().endsWith(".jpg") || file.getName().toLowerCase().endsWith(".png")) && !file.getName().startsWith("tn_")) {
-                resultList.add(file);
-            }
-            if (descendIntoSubDirectories && file.isDirectory()) {
-                ArrayList<File> tmp = getAllImageFiles(file, true);
-                if (tmp != null) {
-                    resultList.addAll(tmp);
-                }
-            }
-        }
+
+        IOFileFilter includeSubdirectories = TrueFileFilter.INSTANCE;
+        if (!descendIntoSubDirectories) includeSubdirectories = null;
+        resultList.addAll(org.apache.commons.io.FileUtils.listFiles(directory, fileFilter, includeSubdirectories));
+
         if (resultList.size() > 0)
             return resultList;
         else
@@ -177,13 +181,14 @@ public class FileUtils {
 
     /**
      * Puts results into a HTML file.
+     *
      * @param prefix
      * @param hits
      * @param queryImage
      * @return
      * @throws IOException
      */
-    public static String saveImageResultsToHtml(String prefix, ImageSearchHits hits, String queryImage) throws IOException {
+    public static String saveImageResultsToHtml(String prefix, ImageSearchHits hits, String queryImage, IndexReader reader) throws IOException {
         long l = System.currentTimeMillis() / 1000;
         String fileName = "results-" + prefix + "-" + l + ".html";
         BufferedWriter bw = new BufferedWriter(new FileWriter(fileName));
@@ -194,7 +199,7 @@ public class FileUtils {
         bw.write("<a href=\"file://" + queryImage + "\"><img src=\"file://" + queryImage + "\"></a><p>\n");
         bw.write("<h3>results</h3>\n");
         for (int i = 0; i < hits.length(); i++) {
-            bw.write(hits.score(i) + " - <a href=\"file://" + hits.doc(i).get("descriptorImageIdentifier") + "\"><img src=\"file://" + hits.doc(i).get("descriptorImageIdentifier") + "\"></a><p>\n");
+            bw.write(hits.score(i) + " - <a href=\"file://" + reader.document(hits.documentID(i)).getValues(DocumentBuilder.FIELD_NAME_IDENTIFIER)[0] + "\"><img src=\"file://" + reader.document(hits.documentID(i)).getValues(DocumentBuilder.FIELD_NAME_IDENTIFIER)[0] + "\"></a><p>\n");
         }
         bw.write("</body>\n" +
                 "</html>");
@@ -204,6 +209,7 @@ public class FileUtils {
 
     /**
      * Puts results into a HTML file.
+     *
      * @param prefix
      * @param hits
      * @param reader
@@ -257,13 +263,13 @@ public class FileUtils {
     }
 
 
-    public static void saveImageResultsToPng(String prefix, ImageSearchHits hits, String queryImage) throws IOException {
+    public static void saveImageResultsToPng(String prefix, ImageSearchHits hits, String queryImage, IndexReader reader) throws IOException {
         LinkedList<BufferedImage> results = new LinkedList<BufferedImage>();
         int width = 0;
         for (int i = 0; i < hits.length(); i++) {
             // hits.score(i)
             // hits.doc(i).get("descriptorImageIdentifier")
-            BufferedImage tmp = ImageIO.read(new FileInputStream(hits.doc(i).get("descriptorImageIdentifier")));
+            BufferedImage tmp = ImageIO.read(new FileInputStream(reader.document(hits.documentID(i)).getValues(DocumentBuilder.FIELD_NAME_IDENTIFIER)[0]));
 //            if (tmp.getHeight() > 200) {
             double factor = 200d / ((double) tmp.getHeight());
             tmp = ImageUtils.scaleImage(tmp, (int) (tmp.getWidth() * factor), 200);
@@ -343,48 +349,50 @@ public class FileUtils {
 
     /**
      * Identifies the type of image based on the magic bytes at the beginning of the file.
+     *
      * @param file the File to test.
      * @return the file type by enumeration FileTypes.
      * @throws IOException
      */
     @SuppressWarnings("unused")
-	private static FileTypes identifyFileType(File file) throws IOException {
+    private static FileTypes identifyFileType(File file) throws IOException {
         byte[] buffer = new byte[8];
         InputStream in = null;
         try {
-			in = new FileInputStream(file);
-	        in.read(buffer);
-	        if ((buffer[0] == -119) && (buffer[1] == 0x50) && (buffer[2] == 0x4E) && (buffer[3] == 0x47)) {
-	            // PNG: 89 50 4E 47 ...
-	            return FileTypes.PNG;
-	        } else if ((buffer[0] == 0xFF) && (buffer[1] == 0xD8)) {
-	            // JPEG image files begin with FF D8 and end with FF D9
-	            return FileTypes.JPG;
-	        } else if ((buffer[0] == 0x25) && (buffer[1] == 0x50) && (buffer[2] == 0x44) && (buffer[3] == 0x46)) {
-	            // PDF 25 50 44 46
-	            return FileTypes.PDF;
-	        } else if ((buffer[0] == 0x49) && (buffer[1] == 0x49) && (buffer[2] == 0x2A) && (buffer[3] == 0x00)) {
-	            // TIFF: 49 49 2A 00 or 4D 4D 00 2A
-	            return FileTypes.TIF;
-	        } else if ((buffer[0] == 0x4D) && (buffer[1] == 0x4D) && (buffer[2] == 0x00) && (buffer[3] == 0x2A)) {
-	            // TIFF: 49 49 2A 00 or 4D 4D 00 2A
-	            return FileTypes.TIF;
-	        } else if ((buffer[0] == 0x47) && (buffer[1] == 0x49) && (buffer[2] == 0x46) && (buffer[3] == 0x38)) {
-	            // GIF: 47 49 46 38 ...
-	            return FileTypes.GIF;
-	        } else {
-	            return FileTypes.UNKNOWN;
-	        }
+            in = new FileInputStream(file);
+            in.read(buffer);
+            if ((buffer[0] == -119) && (buffer[1] == 0x50) && (buffer[2] == 0x4E) && (buffer[3] == 0x47)) {
+                // PNG: 89 50 4E 47 ...
+                return FileTypes.PNG;
+            } else if ((buffer[0] == 0xFF) && (buffer[1] == 0xD8)) {
+                // JPEG image files begin with FF D8 and end with FF D9
+                return FileTypes.JPG;
+            } else if ((buffer[0] == 0x25) && (buffer[1] == 0x50) && (buffer[2] == 0x44) && (buffer[3] == 0x46)) {
+                // PDF 25 50 44 46
+                return FileTypes.PDF;
+            } else if ((buffer[0] == 0x49) && (buffer[1] == 0x49) && (buffer[2] == 0x2A) && (buffer[3] == 0x00)) {
+                // TIFF: 49 49 2A 00 or 4D 4D 00 2A
+                return FileTypes.TIF;
+            } else if ((buffer[0] == 0x4D) && (buffer[1] == 0x4D) && (buffer[2] == 0x00) && (buffer[3] == 0x2A)) {
+                // TIFF: 49 49 2A 00 or 4D 4D 00 2A
+                return FileTypes.TIF;
+            } else if ((buffer[0] == 0x47) && (buffer[1] == 0x49) && (buffer[2] == 0x46) && (buffer[3] == 0x38)) {
+                // GIF: 47 49 46 38 ...
+                return FileTypes.GIF;
+            } else {
+                return FileTypes.UNKNOWN;
+            }
         } finally {
-        	if(in != null) {
-        		in.close();
-        	}
+            if (in != null) {
+                in.close();
+            }
         }
     }
 
     /**
      * Just opens an image with Java and reports if false if there are problems. This method can be used
      * to check for JPG etc. that are not supported by the employed Java version.
+     *
      * @param f the file to check.
      * @return true if no exceptions are thrown bey the decoder.
      */
@@ -400,14 +408,29 @@ public class FileUtils {
         return result;
     }
 
+    public static ArrayList<String> readFileLines(File directory, boolean descendIntoSubDirectories) throws IOException {
+        ArrayList<String> resultList = new ArrayList<String>(256);
+        String[] extensions = new String[]{"jpg", "JPG", "jpeg", "png", "gif", "tif", "tiff"};
+
+        System.out.print("Getting all images in " + directory.getCanonicalPath() + " " + ((descendIntoSubDirectories) ? "including" : "not including") + " those in subdirectories");
+        java.util.List<File> files = (LinkedList<File>) org.apache.commons.io.FileUtils.listFiles(directory, extensions, descendIntoSubDirectories);
+        System.out.println(" ~ Found " + files.size() + " images");
+        for (File file : files) {
+            resultList.add(file.getCanonicalPath());
+        }
+
+        return resultList;
+    }
+
     /**
      * Reads a whole file into a StringBuffer based on java.nio
-     * @param file the file to open.
+     *
+     * @param file          the file to open.
      * @param stringBuilder to write the File to.
      * @throws IOException
      */
     public static void readWholeFile(File file, StringBuilder stringBuilder) throws IOException {
-        long length =file.length();
+        long length = file.length();
         MappedByteBuffer in = new FileInputStream(file).getChannel().map(
                 FileChannel.MapMode.READ_ONLY, 0, length);
         int i = 0;
@@ -418,6 +441,7 @@ public class FileUtils {
 
     /**
      * Reads a whole file into a StringBuffer based on java.nio
+     *
      * @param file the file to open.
      * @throws IOException
      */
@@ -430,6 +454,38 @@ public class FileUtils {
         while (i < length)
             result[i] = in.get(i++);
         return result;
+    }
+
+    /**
+     * Creates a text file containing all full paths to the images in the directory and its subdirectories.
+     *
+     * @param imageDirectory the directories where the images can be found.
+     * @param outputFile     the text file to be written (to)
+     * @param append         set to false to overwrite.
+     * @return the number of images found / lines written the output file.
+     * @throws IOException
+     */
+    public static int createImagefileList(File imageDirectory, File outputFile, boolean append) throws IOException {
+        if (!imageDirectory.isDirectory()) return -1;
+        int result = 0;
+        Collection<File> files = org.apache.commons.io.FileUtils.listFiles(imageDirectory, new String[]{"jpg", "png", "PNG", "JPG"}, true);
+        BufferedWriter bw = new BufferedWriter(new FileWriter(outputFile, append));
+        for (File f : files) {
+            bw.write(f.getAbsolutePath() + "\n");
+            result++;
+        }
+        bw.close();
+        return result;
+    }
+
+    /**
+     * Used to access a file in the resource folder.
+     * @param resourceName the path to the file, eg. "data/files.lst"
+     * @return
+     */
+    public static InputStream getInputStreamFromResources(String resourceName) {
+        ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+        return classloader.getResourceAsStream(resourceName);
     }
 
 
